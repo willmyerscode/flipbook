@@ -1,0 +1,787 @@
+/**
+ * Flipbook Plugin for Squarespace List Sections
+ * Copyright Will-Myers.com
+ **/
+
+/* Custom Property Reference
+ *
+ * Layout & Spacing:
+ * --flipbook-content-max-width: 60%; 
+ * --flipbook-content-max-width-mobile: 100%;
+ * --flipbook-content-padding: var(--sqs-site-gutter, 4vw);
+ * --flipbook-section-padding-block: 3vw;
+ * --flipbook-section-button-margin-top: 6vmax;
+ * --flipbook-viewport-gap: 1.5rem;
+ * --flipbook-progress-margin-top: 2rem;
+ * --flipbook-page-numbers-margin-top: 1rem;
+ *
+ * Book & Pages:
+ * --flipbook-page-aspect-ratio: (fallback when image dimensions are unavailable)
+ * --flipbook-book-max-width: 100%;
+ * --flipbook-viewport-gap-mobile: 0.25rem;
+ * --flipbook-content-padding-mobile: min(2vw, 8px);
+ * --flipbook-book-width-mobile: 100%;
+ * --flipbook-book-scale-mobile: 0.9; /* book width on mobile (no transform scale) 
+ * --flipbook-progress-margin-top-mobile: 1.25rem;
+ * --flipbook-page-gap: 0px;
+ * --flipbook-spine-width: 8px;
+ * --flipbook-page-radius: 0;
+ * --flipbook-page-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+ * --flipbook-page-bg: var(--sectionBackground, var(--siteBackgroundColor));
+ * --flipbook-blank-page-bg: color-mix(in srgb, var(--paragraphMediumColor, #888) 12%, transparent);
+ *
+ * Page Turn:
+ * --flipbook-turn-duration: 0.8s;
+ * --flipbook-fade-duration: 0.4s;
+ * --flipbook-fade-easing: ease-in-out;
+ * --flipbook-turn-easing: cubic-bezier(0.45, 0.05, 0.25, 1);
+ * --flipbook-perspective: 2200px;
+ * --flipbook-bend-shadow: 0 0 40px rgba(0, 0, 0, 0.25);
+ *
+ * Colors (list section theme — see css-custom-properties.css on the section’s data-section-theme):
+ * --flipbook-heading-color: var(--headingLargeColor, var(--headingExtraLargeColor));
+ * --flipbook-text-color: var(--paragraphMediumColor);
+ * --flipbook-progress-fill: var(--headingLargeColor, var(--headingExtraLargeColor));
+ * --flipbook-progress-track: color-mix(in srgb, var(--flipbook-progress-fill, currentColor) 22%, transparent);
+ *
+ * Section button (set by data-wm-list-layout; tokens from css-custom-properties.css):
+ * Carousel: --list-section-carousel-button-background-color, --list-section-carousel-button-text-color
+ * Simple:   --list-section-simple-button-background-color, --list-section-simple-button-text-color
+ * Banner:   --list-section-banner-slideshow-button-background-color, --list-section-banner-slideshow-button-text-color
+ * Fallbacks: --secondaryButtonBackgroundColor / --secondaryButtonTextColor (same accent / safeInverseAccent pattern)
+ *
+ * Arrows (list section style):
+ * --flipbook-arrow-size: 48px;
+ * --flipbook-arrow-icon-width: 44px;
+ * --flipbook-arrow-bg: transparent;
+ * --flipbook-arrow-color: var(--list-section-carousel-arrow-icon-color, var(--headingLargeColor));
+ * --flipbook-arrow-stroke-width: 1.5;
+ * --flipbook-arrow-disabled-opacity: 0.3;
+ * --flipbook-arrow-offset: 0px;
+ * --flipbook-arrow-size-mobile: 32px;
+ * --flipbook-arrow-icon-width-mobile: 22px;
+ *
+ * Typography:
+ * --flipbook-page-numbers-font-family: var(--body-font-font-family);
+ * --flipbook-page-numbers-font-size: var(--paragraph-font-font-size, 1rem);
+ * --flipbook-page-numbers-color: var(--paragraphMediumColor);
+ * --flipbook-page-numbers-align: center; /* left | center | right */
+ * --flipbook-section-title-heading-font-family: var(--heading-large-font-font-family);
+ * --flipbook-section-title-heading-font-size: var(--heading-large-font-font-size);
+ * --flipbook-section-title-heading-font-weight: var(--heading-large-font-font-weight);
+ * --flipbook-section-title-heading-line-height: var(--heading-large-font-line-height);
+ * --flipbook-section-title-heading-letter-spacing: var(--heading-large-font-letter-spacing);
+ * --flipbook-section-title-heading-text-transform: var(--heading-large-font-text-transform);
+ * --flipbook-section-title-heading-color: var(--list-section-title-color, var(--headingLargeColor));
+ * --flipbook-section-title-description-gap: 0.5em;
+ */
+
+/* ================================
+   HIDE ORIGINAL LIST SECTION
+   ================================ */
+
+[data-wm-plugin="flipbook"] .user-items-list-item-container {
+  display: none !important;
+}
+
+body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .user-items-list-item-container {
+  display: block !important;
+}
+
+body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .wm-flipbook-content {
+  display: none !important;
+}
+
+/* ================================
+   PLUGIN CONTENT
+   ================================ */
+
+[data-wm-plugin="flipbook"] .wm-flipbook-content {
+  width: 100%;
+  min-width: 0;
+  padding-block: var(--flipbook-section-padding-block, 3vw);
+  padding-left: var(--flipbook-content-padding, var(--sqs-site-gutter, 4vw));
+  padding-right: var(--flipbook-content-padding, var(--sqs-site-gutter, 4vw));
+  color: var(--flipbook-text-color, var(--paragraphMediumColor));
+  box-sizing: border-box;
+}
+
+[data-wm-plugin="flipbook"] .user-items-list > .wm-flipbook-section-title[data-section-title-alignment="left"] {
+  text-align: left;
+}
+
+[data-wm-plugin="flipbook"] .user-items-list > .wm-flipbook-section-title[data-section-title-alignment="center"] {
+  text-align: center;
+}
+
+[data-wm-plugin="flipbook"] .user-items-list > .wm-flipbook-section-title[data-section-title-alignment="right"] {
+  text-align: right;
+}
+
+[data-wm-plugin="flipbook"] .user-items-list > .wm-flipbook-section-title p,
+[data-wm-plugin="flipbook"] .user-items-list > .wm-flipbook-section-title .wm-flipbook-section-title__description {
+  margin: 0;
+}
+
+[data-wm-plugin="flipbook"] .user-items-list > .wm-flipbook-section-title .wm-flipbook-section-title__title,
+[data-wm-plugin="flipbook"] .user-items-list > .wm-flipbook-section-title .wm-flipbook-section-title__description {
+  display: block;
+  width: 100%;
+}
+
+[data-wm-plugin="flipbook"] .user-items-list > .wm-flipbook-section-title .wm-flipbook-section-title__title {
+  font-family: var(
+    --flipbook-section-title-heading-font-family,
+    var(--heading-large-font-font-family)
+  );
+  font-size: var(
+    --flipbook-section-title-heading-font-size,
+    var(--heading-large-font-font-size)
+  );
+  font-weight: var(
+    --flipbook-section-title-heading-font-weight,
+    var(--heading-large-font-font-weight)
+  );
+  line-height: var(
+    --flipbook-section-title-heading-line-height,
+    var(--heading-large-font-line-height)
+  );
+  letter-spacing: var(
+    --flipbook-section-title-heading-letter-spacing,
+    var(--heading-large-font-letter-spacing)
+  );
+  text-transform: var(
+    --flipbook-section-title-heading-text-transform,
+    var(--heading-large-font-text-transform)
+  );
+  color: var(
+    --flipbook-section-title-heading-color,
+    var(--list-section-title-color, var(--headingLargeColor))
+  );
+}
+
+[data-wm-plugin="flipbook"] .user-items-list > .wm-flipbook-section-title .wm-flipbook-section-title__description {
+  white-space: pre-wrap;
+}
+
+[data-wm-plugin="flipbook"] .user-items-list > .wm-flipbook-section-title .wm-flipbook-section-title__title + .wm-flipbook-section-title__description {
+  margin-top: var(--flipbook-section-title-description-gap, 0.5em);
+}
+
+[data-wm-plugin="flipbook"] .user-items-list > .list-section-button-container,
+[data-wm-plugin="flipbook"] .wm-flipbook-content > .list-section-button-container {
+  display: block;
+  opacity: 1;
+  visibility: visible;
+}
+
+[data-wm-plugin="flipbook"] .user-items-list > .list-section-button-container:not([style*="margin-top"]) {
+  margin-top: var(--flipbook-section-button-margin-top, 6vmax);
+}
+
+[data-wm-plugin="flipbook"] .list-section-button-container[data-section-button-alignment="left"] {
+  text-align: left;
+}
+
+[data-wm-plugin="flipbook"] .list-section-button-container[data-section-button-alignment="center"] {
+  text-align: center;
+}
+
+[data-wm-plugin="flipbook"] .list-section-button-container[data-section-button-alignment="right"] {
+  text-align: right;
+}
+
+/*
+ * List section button colors — mirrors Squarespace list-section tokens
+ * (see css-custom-properties.css per [data-section-theme] on the page section).
+ */
+[data-wm-plugin="flipbook"][data-wm-list-layout="carousel"] {
+  --wm-flipbook-section-button-bg: var(
+    --list-section-carousel-button-background-color,
+    var(--secondaryButtonBackgroundColor, hsla(var(--accent-hsl), 1))
+  );
+  --wm-flipbook-section-button-text: var(
+    --list-section-carousel-button-text-color,
+    var(--secondaryButtonTextColor, hsla(var(--safeInverseAccent-hsl), 1))
+  );
+}
+
+[data-wm-plugin="flipbook"][data-wm-list-layout="simple"] {
+  --wm-flipbook-section-button-bg: var(
+    --list-section-simple-button-background-color,
+    var(--secondaryButtonBackgroundColor, hsla(var(--accent-hsl), 1))
+  );
+  --wm-flipbook-section-button-text: var(
+    --list-section-simple-button-text-color,
+    var(--secondaryButtonTextColor, hsla(var(--safeInverseAccent-hsl), 1))
+  );
+}
+
+[data-wm-plugin="flipbook"][data-wm-list-layout="banner-slideshow"] {
+  --wm-flipbook-section-button-bg: var(
+    --list-section-banner-slideshow-button-background-color,
+    var(--secondaryButtonBackgroundColor, hsla(var(--accent-hsl), 1))
+  );
+  --wm-flipbook-section-button-text: var(
+    --list-section-banner-slideshow-button-text-color,
+    var(--secondaryButtonTextColor, hsla(var(--safeInverseAccent-hsl), 1))
+  );
+}
+
+/* Default layout tokens when data-wm-list-layout is not set yet */
+[data-wm-plugin="flipbook"]:not([data-wm-list-layout]) {
+  --wm-flipbook-section-button-bg: var(
+    --list-section-carousel-button-background-color,
+    var(--secondaryButtonBackgroundColor, hsla(var(--accent-hsl), 1))
+  );
+  --wm-flipbook-section-button-text: var(
+    --list-section-carousel-button-text-color,
+    var(--secondaryButtonTextColor, hsla(var(--safeInverseAccent-hsl), 1))
+  );
+}
+
+[data-wm-plugin="flipbook"] .list-section-button-container .list-section-button {
+  display: inline-block;
+  text-decoration: none;
+  box-sizing: border-box;
+  opacity: 1;
+  visibility: visible;
+}
+
+[data-wm-plugin="flipbook"] .list-section-button-container .list-section-button.sqs-button-element--secondary {
+  color: var(--wm-flipbook-section-button-text);
+  background-color: var(--wm-flipbook-section-button-bg);
+  border-color: var(--wm-flipbook-section-button-bg);
+}
+
+[data-wm-plugin="flipbook"] .list-section-button-container .list-section-button.sqs-button-element--primary {
+  color: var(--primaryButtonTextColor, hsla(var(--white-hsl), 1));
+  background-color: var(--primaryButtonBackgroundColor, hsla(var(--darkAccent-hsl), 1));
+  border-color: var(--primaryButtonBackgroundColor, hsla(var(--darkAccent-hsl), 1));
+}
+
+/* ================================
+   VIEWPORT & ARROWS
+   ================================ */
+
+[data-wm-plugin="flipbook"] .wm-flipbook-viewport {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: var(--flipbook-viewport-gap, 1.5rem);
+  width: 100%;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-book-wrap {
+  position: relative;
+  width: 100%;
+  max-width: var(--flipbook-content-max-width, 60%);
+  min-width: 0;
+  margin-inline: auto;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-arrow {
+  position: relative;
+  flex-shrink: 0;
+  width: var(--flipbook-arrow-size, 48px);
+  height: var(--flipbook-arrow-size, 48px);
+  padding: 0;
+  border: none;
+  background: var(--flipbook-arrow-bg, transparent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4;
+  transition: opacity 0.2s ease;
+  align-self: center;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-arrow:focus {
+  outline: none;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-arrow:focus-visible {
+  outline: 2px solid var(--flipbook-progress-fill, var(--headingLargeColor));
+  outline-offset: 2px;
+  border-radius: 50%;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-arrow--disabled {
+  opacity: var(--flipbook-arrow-disabled-opacity, 0.3);
+  cursor: default;
+  pointer-events: none;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-arrow-bg {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--flipbook-arrow-bg, transparent);
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-arrow svg {
+  position: relative;
+  width: var(--flipbook-arrow-icon-width, 44px);
+  height: auto;
+  display: block;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-arrow svg path {
+  stroke: var(--flipbook-arrow-color, var(--list-section-carousel-arrow-icon-color, var(--headingLargeColor)));
+  stroke-width: var(--flipbook-arrow-stroke-width, 1.5);
+  fill: none;
+}
+
+/* ================================
+   BOOK STAGE
+   ================================ */
+
+[data-wm-plugin="flipbook"] .wm-flipbook-stage {
+  width: 100%;
+  max-width: var(--flipbook-book-max-width, 100%);
+  margin: 0 auto;
+  perspective: var(--flipbook-perspective, 2200px);
+  outline: none;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-book {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  width: 100%;
+  transform-style: preserve-3d;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-spine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: var(--flipbook-spine-width, 8px);
+  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--flipbook-heading-color, currentColor) 18%, transparent);
+  border-radius: 2px;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+
+[data-wm-plugin="flipbook"] .wm-flipbook-pages {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--flipbook-page-gap, 0px);
+  width: 100%;
+  transform-style: preserve-3d;
+}
+
+/* Keep the same two-column grid as spreads so cover ↔ spread does not shift controls */
+[data-wm-plugin="flipbook"] .wm-flipbook-book[data-cover="true"] .wm-flipbook-page--left {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* ================================
+   PAGES
+   ================================ */
+
+[data-wm-plugin="flipbook"] .wm-flipbook-page {
+  position: relative;
+  aspect-ratio: var(--flipbook-page-aspect-ratio, 4 / 3);
+  background: var(--flipbook-page-bg, var(--sectionBackground, var(--siteBackgroundColor)));
+  border-radius: var(--flipbook-page-radius, 0);
+  overflow: hidden;
+  transform-style: preserve-3d;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-page--left {
+  box-shadow: var(--flipbook-page-shadow-left, -8px 8px 32px rgba(0, 0, 0, 0.18));
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-page--right {
+  box-shadow: var(--flipbook-page-shadow-right, 8px 8px 32px rgba(0, 0, 0, 0.18));
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-book[data-cover="true"] .wm-flipbook-page--right {
+  box-shadow: var(--flipbook-page-shadow, 0 8px 32px rgba(0, 0, 0, 0.18));
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-page--blank {
+  aspect-ratio: auto;
+  min-height: 0;
+  background: var(--flipbook-blank-page-bg, color-mix(in srgb, var(--paragraphMediumColor, #888) 12%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 8%, transparent);
+}
+
+/* Empty left page slot stays transparent (cover ↔ spread turns and mobile spreads) */
+[data-wm-plugin="flipbook"] .wm-flipbook-page--left.wm-flipbook-page--blank {
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-page__surface,
+[data-wm-plugin="flipbook"] .wm-flipbook-page__inner {
+  position: absolute;
+  inset: 0;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-page__inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-page__inner img.is-ready {
+  opacity: 1;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-page__shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    to left,
+    rgba(0, 0, 0, 0.28) 0%,
+    rgba(0, 0, 0, 0.08) 18%,
+    transparent 42%
+  );
+  transition: opacity 0.2s ease;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-page--right .wm-flipbook-page__shade {
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.28) 0%,
+    rgba(0, 0, 0, 0.08) 18%,
+    transparent 42%
+  );
+}
+
+/* ================================
+   FLIPPER (3D PAGE TURN)
+   ================================ */
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  left: 50%;
+  transform-style: preserve-3d;
+  transform: rotateY(0deg);
+  z-index: 5;
+  pointer-events: none;
+  will-change: transform;
+  opacity: 0;
+  visibility: hidden;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper.is-flipping,
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper.is-dragging,
+[data-wm-plugin="flipbook"] .wm-flipbook-book.is-turning .wm-flipbook-flipper {
+  opacity: 1;
+  visibility: visible;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper.is-flipping {
+  transition: transform var(--flipbook-turn-duration, 0.8s) var(--flipbook-turn-easing, cubic-bezier(0.45, 0.05, 0.25, 1));
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper[data-direction="backward"].is-flipping {
+  transition-timing-function: var(
+    --flipbook-turn-easing-backward,
+    cubic-bezier(0.25, 0.1, 0.25, 1)
+  );
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper.is-dragging {
+  transition: none;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper[data-origin="right"] {
+  left: 0;
+  transform-origin: right center;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper[data-origin="left"],
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper:not([data-origin="right"]) {
+  transform-origin: left center;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: var(--flipbook-page-radius, 0);
+  overflow: hidden;
+  box-shadow: var(--flipbook-bend-shadow, 0 0 40px rgba(0, 0, 0, 0.25));
+  background: var(--flipbook-page-bg, var(--sectionBackground, var(--siteBackgroundColor)));
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper__face--back {
+  transform: rotateY(180deg);
+}
+
+/* Forward: keep the next page visible under the turning right page */
+[data-wm-plugin="flipbook"] .wm-flipbook-book.is-turning[data-turn="forward"] .wm-flipbook-page--right {
+  z-index: 2;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-book.is-turning[data-turn="forward"] .wm-flipbook-page--left {
+  z-index: 1;
+}
+
+/* Backward: show the previous left page under the turning page, keep the current right page visible */
+[data-wm-plugin="flipbook"] .wm-flipbook-book.is-turning[data-turn="backward"] .wm-flipbook-page--left {
+  z-index: 1;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-book.is-turning[data-turn="backward"] .wm-flipbook-page--right {
+  z-index: 2;
+}
+
+/* Backward: left page hinges at spine and folds onto the right slot */
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper[data-direction="backward"] {
+  left: 0;
+  transform-origin: right center;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-book.is-turning .wm-flipbook-flipper {
+  z-index: 8;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper[data-direction="backward"] .wm-flipbook-page__shade {
+  background: linear-gradient(
+    to left,
+    rgba(0, 0, 0, 0.35) 0%,
+    rgba(0, 0, 0, 0.12) 22%,
+    transparent 48%
+  );
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper[data-direction="backward"] .wm-flipbook-flipper__face--back .wm-flipbook-page__shade {
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.2) 0%,
+    transparent 35%
+  );
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-book.is-turning .wm-flipbook-page__shade,
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper.is-flipping .wm-flipbook-page__shade,
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper.is-dragging .wm-flipbook-page__shade {
+  opacity: 1;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper.is-flipping .wm-flipbook-page__inner img,
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper.is-dragging .wm-flipbook-page__inner img {
+  filter: brightness(0.96);
+}
+
+/* ================================
+   DRAG ZONE
+   ================================ */
+
+[data-wm-plugin="flipbook"] .wm-flipbook-drag-zone {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  cursor: grab;
+  touch-action: none;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-drag-zone:active {
+  cursor: grabbing;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-book.is-turning:not(.is-drag-active) .wm-flipbook-drag-zone {
+  pointer-events: none;
+}
+
+/* ================================
+   PROGRESS BAR
+   ================================ */
+
+[data-wm-plugin="flipbook"]:not([data-wm-show-progress]) .wm-flipbook-progress {
+  display: none;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-progress {
+  margin-top: var(--flipbook-progress-margin-top, 2rem);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-progress__track {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: var(--flipbook-progress-height, 6px);
+  border-radius: var(--flipbook-progress-radius, 999px);
+  background: var(--flipbook-progress-track, color-mix(in srgb, var(--flipbook-progress-fill, var(--headingLargeColor)) 22%, transparent));
+  overflow: hidden;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-progress__fill {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: var(--flipbook-progress-fill, var(--headingLargeColor, var(--headingExtraLargeColor)));
+  transition: width var(--flipbook-turn-duration, 0.8s) var(--flipbook-turn-easing, cubic-bezier(0.45, 0.05, 0.25, 1));
+}
+
+/* ================================
+   PAGE NUMBERS
+   ================================ */
+
+[data-wm-plugin="flipbook"]:not([data-wm-show-page-numbers]) .wm-flipbook-page-numbers {
+  display: none;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-page-numbers {
+  margin-top: var(--flipbook-page-numbers-margin-top, 1rem);
+  margin-bottom: 0;
+  text-align: var(--flipbook-page-numbers-align, center);
+  font-family: var(--flipbook-page-numbers-font-family, var(--body-font-font-family));
+  font-size: var(--flipbook-page-numbers-font-size, var(--paragraph-font-font-size, 1rem));
+  color: var(--flipbook-page-numbers-color, var(--paragraphMediumColor));
+  line-height: 1.4;
+}
+
+/* ================================
+   MOBILE
+   ================================ */
+
+@media (max-width: 767px) {
+  /* Single-page mode (one image per view; set via JS data-wm-single-page) */
+  [data-wm-plugin="flipbook"][data-wm-single-page] .wm-flipbook-book .wm-flipbook-pages {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+
+  [data-wm-plugin="flipbook"][data-wm-single-page] .wm-flipbook-page--left {
+    display: none;
+  }
+
+  [data-wm-plugin="flipbook"][data-wm-single-page] .wm-flipbook-flipper[data-direction="forward"],
+  [data-wm-plugin="flipbook"][data-wm-single-page] .wm-flipbook-flipper:not([data-direction="backward"]) {
+    left: 0;
+    width: 100%;
+  }
+
+  [data-wm-plugin="flipbook"][data-wm-single-page] .wm-flipbook-page--right.is-crossfading > .wm-flipbook-page__surface {
+    transition: opacity var(--flipbook-fade-duration, 0.4s) var(--flipbook-fade-easing, ease-in-out);
+    will-change: opacity;
+  }
+
+  [data-wm-plugin="flipbook"][data-wm-single-page] .wm-flipbook-page--right.is-crossfading > .wm-flipbook-page__surface--incoming {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    opacity: 0;
+  }
+
+  [data-wm-plugin="flipbook"][data-wm-single-page] .wm-flipbook-page--right.is-crossfading > .wm-flipbook-page__surface:not(.wm-flipbook-page__surface--incoming) {
+    z-index: 1;
+    opacity: 1;
+  }
+
+  [data-wm-plugin="flipbook"][data-wm-single-page] .wm-flipbook-page--right.is-crossfade-active > .wm-flipbook-page__surface:not(.wm-flipbook-page__surface--incoming) {
+    opacity: 0;
+  }
+
+  [data-wm-plugin="flipbook"][data-wm-single-page] .wm-flipbook-page--right.is-crossfade-active > .wm-flipbook-page__surface--incoming {
+    opacity: 1;
+  }
+
+  [data-wm-plugin="flipbook"] .wm-flipbook-book.is-fading {
+    pointer-events: none;
+  }
+
+  [data-wm-plugin="flipbook"] .wm-flipbook-content {
+    padding-left: var(--flipbook-content-padding-mobile, min(3vw, 12px));
+    padding-right: var(--flipbook-content-padding-mobile, min(3vw, 12px));
+    overflow-x: clip;
+  }
+
+  [data-wm-plugin="flipbook"] .wm-flipbook-viewport {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--flipbook-viewport-gap-mobile, 0.35rem);
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  [data-wm-plugin="flipbook"] .wm-flipbook-book-wrap {
+    width: var(--flipbook-book-width-mobile, 100%);
+    max-width: min(100%, var(--flipbook-content-max-width-mobile, 100%));
+    margin-inline: auto;
+    min-width: 0;
+    overflow: visible;
+  }
+
+  [data-wm-plugin="flipbook"] .wm-flipbook-progress {
+    margin-top: var(--flipbook-progress-margin-top-mobile, 1.25rem);
+  }
+
+  [data-wm-plugin="flipbook"] .wm-flipbook-flipper.is-flipping,
+  [data-wm-plugin="flipbook"] .wm-flipbook-flipper.is-dragging {
+    bottom: auto;
+  }
+
+  [data-wm-plugin="flipbook"] .wm-flipbook-stage {
+    width: min(100%, calc(100% * var(--flipbook-book-scale-mobile, 0.9)));
+    max-width: 100%;
+    margin-inline: auto;
+    transform: none;
+    perspective: var(--flipbook-perspective-mobile, 1400px);
+  }
+
+  [data-wm-plugin="flipbook"] .wm-flipbook-book {
+    overflow: visible;
+  }
+
+  [data-wm-plugin="flipbook"] .wm-flipbook-book.is-turning .wm-flipbook-stage {
+    overflow: visible;
+  }
+
+  [data-wm-plugin="flipbook"] .wm-flipbook-page--left,
+  [data-wm-plugin="flipbook"] .wm-flipbook-page--right {
+    box-shadow: none;
+  }
+
+  [data-wm-plugin="flipbook"] .wm-flipbook-book[data-cover="true"] .wm-flipbook-page--right {
+    box-shadow: none;
+  }
+
+  [data-wm-plugin="flipbook"] .wm-flipbook-flipper__face {
+    box-shadow: none;
+  }
+
+  [data-wm-plugin="flipbook"] .wm-flipbook-arrow {
+    width: var(--flipbook-arrow-size-mobile, 28px);
+    height: var(--flipbook-arrow-size-mobile, 28px);
+    flex-shrink: 0;
+  }
+
+  [data-wm-plugin="flipbook"] .wm-flipbook-arrow svg {
+    width: var(--flipbook-arrow-icon-width-mobile, 20px);
+  }
+
+  [data-wm-plugin="flipbook"] .user-items-list > .list-section-button-container:not([style*="margin-top"]) {
+    margin-top: var(--flipbook-section-button-margin-top-mobile, var(--flipbook-section-button-margin-top, 6vmax));
+  }
+
+}
