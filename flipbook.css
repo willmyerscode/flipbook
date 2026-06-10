@@ -6,8 +6,8 @@
 /* Custom Property Reference
  *
  * Layout & Spacing:
- * --flipbook-content-max-width: 60%; 
- * --flipbook-content-max-width-mobile: 100%;
+ * --flipbook-max-width: 60%;
+ * --flipbook-mobile-max-width: 100%;
  * --flipbook-content-padding: var(--sqs-site-gutter, 4vw);
  * --flipbook-section-padding-block: 3vw;
  * --flipbook-section-button-margin-top: 6vmax;
@@ -16,11 +16,8 @@
  * --flipbook-page-numbers-margin-top: 1rem;
  *
  * Book & Pages:
- * --flipbook-page-aspect-ratio: (fallback when image dimensions are unavailable)
- * --flipbook-book-max-width: 100%;
  * --flipbook-viewport-gap-mobile: 0.25rem;
  * --flipbook-content-padding-mobile: min(2vw, 8px);
- * --flipbook-book-width-mobile: 100%;
  * --flipbook-book-scale-mobile: 0.9; /* book width on mobile (no transform scale) 
  * --flipbook-progress-margin-top-mobile: 1.25rem;
  * --flipbook-page-gap: 0px;
@@ -31,7 +28,6 @@
  * --flipbook-blank-page-bg: color-mix(in srgb, var(--paragraphMediumColor, #888) 12%, transparent);
  *
  * Page Turn:
- * --flipbook-turn-duration: 0.8s;
  * --flipbook-fade-duration: 0.4s;
  * --flipbook-fade-easing: ease-in-out;
  * --flipbook-turn-easing: cubic-bezier(0.45, 0.05, 0.25, 1);
@@ -65,14 +61,7 @@
  * --flipbook-page-numbers-font-family: var(--body-font-font-family);
  * --flipbook-page-numbers-font-size: var(--paragraph-font-font-size, 1rem);
  * --flipbook-page-numbers-color: var(--paragraphMediumColor);
- * --flipbook-page-numbers-align: center; /* left | center | right */
- * --flipbook-section-title-heading-font-family: var(--heading-large-font-font-family);
- * --flipbook-section-title-heading-font-size: var(--heading-large-font-font-size);
- * --flipbook-section-title-heading-font-weight: var(--heading-large-font-font-weight);
- * --flipbook-section-title-heading-line-height: var(--heading-large-font-line-height);
- * --flipbook-section-title-heading-letter-spacing: var(--heading-large-font-letter-spacing);
- * --flipbook-section-title-heading-text-transform: var(--heading-large-font-text-transform);
- * --flipbook-section-title-heading-color: var(--list-section-title-color, var(--headingLargeColor));
+ * --flipbook-page-numbers-align: center;
  * --flipbook-section-title-description-gap: 0.5em;
  */
 
@@ -130,34 +119,13 @@ body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .wm-flipbook-content {
 }
 
 [data-wm-plugin="flipbook"] .user-items-list > .wm-flipbook-section-title .wm-flipbook-section-title__title {
-  font-family: var(
-    --flipbook-section-title-heading-font-family,
-    var(--heading-large-font-font-family)
-  );
-  font-size: var(
-    --flipbook-section-title-heading-font-size,
-    var(--heading-large-font-font-size)
-  );
-  font-weight: var(
-    --flipbook-section-title-heading-font-weight,
-    var(--heading-large-font-font-weight)
-  );
-  line-height: var(
-    --flipbook-section-title-heading-line-height,
-    var(--heading-large-font-line-height)
-  );
-  letter-spacing: var(
-    --flipbook-section-title-heading-letter-spacing,
-    var(--heading-large-font-letter-spacing)
-  );
-  text-transform: var(
-    --flipbook-section-title-heading-text-transform,
-    var(--heading-large-font-text-transform)
-  );
-  color: var(
-    --flipbook-section-title-heading-color,
-    var(--list-section-title-color, var(--headingLargeColor))
-  );
+  font-family: var(--heading-large-font-font-family);
+  font-size: var(--heading-large-font-font-size);
+  font-weight: var(--heading-large-font-font-weight);
+  line-height: var(--heading-large-font-line-height);
+  letter-spacing: var(--heading-large-font-letter-spacing);
+  text-transform: var(--heading-large-font-text-transform);
+  color: var(--list-section-title-color, var(--headingLargeColor));
 }
 
 [data-wm-plugin="flipbook"] .user-items-list > .wm-flipbook-section-title .wm-flipbook-section-title__description {
@@ -276,7 +244,7 @@ body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .wm-flipbook-content {
 [data-wm-plugin="flipbook"] .wm-flipbook-book-wrap {
   position: relative;
   width: 100%;
-  max-width: var(--flipbook-content-max-width, 60%);
+  max-width: var(--flipbook-max-width, var(--flipbook-book-max-width, 60%));
   min-width: 0;
   margin-inline: auto;
 }
@@ -340,7 +308,6 @@ body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .wm-flipbook-content {
 
 [data-wm-plugin="flipbook"] .wm-flipbook-stage {
   width: 100%;
-  max-width: var(--flipbook-book-max-width, 100%);
   margin: 0 auto;
   perspective: var(--flipbook-perspective, 2200px);
   outline: none;
@@ -391,19 +358,27 @@ body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .wm-flipbook-content {
 
 [data-wm-plugin="flipbook"] .wm-flipbook-page {
   position: relative;
-  aspect-ratio: var(--flipbook-page-aspect-ratio, 4 / 3);
+  aspect-ratio: 4 / 3;
   background: var(--flipbook-page-bg, var(--sectionBackground, var(--siteBackgroundColor)));
-  border-radius: var(--flipbook-page-radius, 0);
   overflow: hidden;
   transform-style: preserve-3d;
 }
 
+/* Spreads: round outer corners only (spine edges stay square) */
 [data-wm-plugin="flipbook"] .wm-flipbook-page--left {
+  border-radius: var(--flipbook-page-radius, 0) 0 0 var(--flipbook-page-radius, 0);
   box-shadow: var(--flipbook-page-shadow-left, -8px 8px 32px rgba(0, 0, 0, 0.18));
 }
 
 [data-wm-plugin="flipbook"] .wm-flipbook-page--right {
+  border-radius: 0 var(--flipbook-page-radius, 0) var(--flipbook-page-radius, 0) 0;
   box-shadow: var(--flipbook-page-shadow-right, 8px 8px 32px rgba(0, 0, 0, 0.18));
+}
+
+/* Single pages: round all four corners (cover + mobile single-page mode) */
+[data-wm-plugin="flipbook"] .wm-flipbook-book[data-cover="true"] .wm-flipbook-page--right,
+[data-wm-plugin="flipbook"][data-wm-single-page] .wm-flipbook-page--right {
+  border-radius: var(--flipbook-page-radius, 0);
 }
 
 [data-wm-plugin="flipbook"] .wm-flipbook-book[data-cover="true"] .wm-flipbook-page--right {
@@ -494,7 +469,7 @@ body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .wm-flipbook-content {
 }
 
 [data-wm-plugin="flipbook"] .wm-flipbook-flipper.is-flipping {
-  transition: transform var(--flipbook-turn-duration, 0.8s) var(--flipbook-turn-easing, cubic-bezier(0.45, 0.05, 0.25, 1));
+  transition: transform 0.8s var(--flipbook-turn-easing, cubic-bezier(0.45, 0.05, 0.25, 1));
 }
 
 [data-wm-plugin="flipbook"] .wm-flipbook-flipper[data-direction="backward"].is-flipping {
@@ -523,10 +498,30 @@ body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .wm-flipbook-content {
   inset: 0;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  border-radius: var(--flipbook-page-radius, 0);
   overflow: hidden;
   box-shadow: var(--flipbook-bend-shadow, 0 0 40px rgba(0, 0, 0, 0.25));
   background: var(--flipbook-page-bg, var(--sectionBackground, var(--siteBackgroundColor)));
+}
+
+/* Flipper radii: each face gets the radius of the page it displays (via JS data-flip-front / data-flip-back). */
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper[data-flip-front="spread-left"] .wm-flipbook-flipper__face--front,
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper[data-flip-back="spread-left"] .wm-flipbook-flipper__face--back {
+  border-radius: var(--flipbook-page-radius, 0) 0 0 var(--flipbook-page-radius, 0);
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper[data-flip-front="spread-right"] .wm-flipbook-flipper__face--front,
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper[data-flip-back="spread-right"] .wm-flipbook-flipper__face--back {
+  border-radius: 0 var(--flipbook-page-radius, 0) var(--flipbook-page-radius, 0) 0;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper[data-flip-front="single"] .wm-flipbook-flipper__face--front,
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper[data-flip-back="single"] .wm-flipbook-flipper__face--back {
+  border-radius: var(--flipbook-page-radius, 0);
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-flipper .wm-flipbook-page__surface {
+  border-radius: inherit;
+  overflow: hidden;
 }
 
 [data-wm-plugin="flipbook"] .wm-flipbook-flipper__face--back {
@@ -639,7 +634,7 @@ body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .wm-flipbook-content {
   width: 0%;
   border-radius: inherit;
   background: var(--flipbook-progress-fill, var(--headingLargeColor, var(--headingExtraLargeColor)));
-  transition: width var(--flipbook-turn-duration, 0.8s) var(--flipbook-turn-easing, cubic-bezier(0.45, 0.05, 0.25, 1));
+  transition: width 0.8s var(--flipbook-turn-easing, cubic-bezier(0.45, 0.05, 0.25, 1));
 }
 
 /* ================================
@@ -725,8 +720,8 @@ body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .wm-flipbook-content {
   }
 
   [data-wm-plugin="flipbook"] .wm-flipbook-book-wrap {
-    width: var(--flipbook-book-width-mobile, 100%);
-    max-width: min(100%, var(--flipbook-content-max-width-mobile, 100%));
+    width: var(--flipbook-mobile-max-width, var(--flipbook-book-width-mobile, 100%));
+    max-width: min(100%, var(--flipbook-mobile-max-width, var(--flipbook-book-width-mobile, 100%)));
     margin-inline: auto;
     min-width: 0;
     overflow: visible;
