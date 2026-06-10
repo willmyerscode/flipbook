@@ -81,7 +81,6 @@ class WMFlipbook {
   init() {
     WMFlipbook.emitEvent(':beforeInit', { el: this.el }, this.el);
     this.addDataAttribute();
-    this.applyTurnDuration();
     this.extractData();
     if (!this.pages.length) {
       console.warn(`[${this.pluginName}] No pages found`);
@@ -107,11 +106,22 @@ class WMFlipbook {
     }
   }
 
-  applyTurnDuration() {
+  getTurnDurationCss() {
     const { turnDuration } = this.settings;
-    if (turnDuration == null) return;
-    const value = typeof turnDuration === 'number' ? `${turnDuration}s` : String(turnDuration);
-    this.el.style.setProperty('--flipbook-turn-duration', value);
+    if (turnDuration == null) return '0.8s';
+    return typeof turnDuration === 'number' ? `${turnDuration}s` : String(turnDuration);
+  }
+
+  getTurnEasingCss() {
+    const direction = this.flipperEl?.dataset.direction;
+    const prop = direction === 'backward'
+      ? '--flipbook-turn-easing-backward'
+      : '--flipbook-turn-easing';
+    const fallback = direction === 'backward'
+      ? 'cubic-bezier(0.25, 0.1, 0.25, 1)'
+      : 'cubic-bezier(0.45, 0.05, 0.25, 1)';
+    const val = getComputedStyle(this.el).getPropertyValue(prop).trim();
+    return val || fallback;
   }
 
   static parseImageDimensions(source) {
@@ -1165,6 +1175,30 @@ class WMFlipbook {
     this.renderTurnUnderlayPages(direction, toInfo, fromInfo);
   }
 
+  setFlipperFaceRadius(direction, fromInfo, toInfo) {
+    if (!this.flipperEl) return;
+
+    if (this.isSinglePageMode()) {
+      this.flipperEl.dataset.flipFront = 'single';
+      this.flipperEl.dataset.flipBack = 'single';
+      return;
+    }
+
+    let frontVisible;
+    let backVisible;
+
+    if (direction === 'forward') {
+      frontVisible = fromInfo?.isCover ? 'single' : 'spread-right';
+      backVisible = 'spread-left';
+    } else {
+      frontVisible = 'spread-left';
+      backVisible = toInfo?.isCover ? 'single' : 'spread-right';
+    }
+
+    this.flipperEl.dataset.flipFront = frontVisible;
+    this.flipperEl.dataset.flipBack = backVisible;
+  }
+
   setFlipperPose(angle, origin) {
     this.flipperEl.dataset.origin = origin;
     this.flipperEl.style.transformOrigin = origin === 'left' ? 'left center' : 'right center';
@@ -1179,7 +1213,7 @@ class WMFlipbook {
     void this.flipperEl.offsetWidth;
 
     this.flipperEl.classList.add('is-flipping');
-    this.flipperEl.style.transition = '';
+    this.flipperEl.style.transition = `transform ${this.getTurnDurationCss()} ${this.getTurnEasingCss()}`;
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -1295,7 +1329,9 @@ class WMFlipbook {
     if (!this.progressFillEl) return;
     const progress = this.getProgressPercent(spreadIndex, turnFraction, direction);
     this.progressFillEl.style.width = `${progress}%`;
-    this.progressFillEl.style.transition = animate ? '' : 'none';
+    this.progressFillEl.style.transition = animate
+      ? `width ${this.getTurnDurationCss()} ${this.getTurnEasingCss()}`
+      : 'none';
     const progressBar = this.progressFillEl.closest('[role="progressbar"]');
     if (progressBar) {
       progressBar.setAttribute('aria-valuenow', String(Math.round(progress)));
@@ -1372,6 +1408,8 @@ class WMFlipbook {
     this.flipperEl.style.transition = '';
     this.flipperEl.style.transformOrigin = '';
     this.flipperEl.dataset.direction = '';
+    delete this.flipperEl.dataset.flipFront;
+    delete this.flipperEl.dataset.flipBack;
     this.bookEl?.classList.remove('is-turning', 'is-drag-active');
     if (this.bookEl) delete this.bookEl.dataset.turn;
     this.clearTurnLayoutHeight();
@@ -1412,9 +1450,7 @@ class WMFlipbook {
 
   getFadeDurationMs() {
     const root = getComputedStyle(this.el);
-    const val =
-      root.getPropertyValue('--flipbook-fade-duration').trim() ||
-      root.getPropertyValue('--flipbook-turn-duration').trim();
+    const val = root.getPropertyValue('--flipbook-fade-duration').trim();
     if (!val) return 400;
     if (val.endsWith('ms')) return parseFloat(val);
     if (val.endsWith('s')) return parseFloat(val) * 1000;
@@ -1559,6 +1595,7 @@ class WMFlipbook {
 
         this.prepareTurnUnderlay(actualDirection, toInfo, fromInfo);
         this.positionFlipperToPage(actualDirection, fromInfo);
+        this.setFlipperFaceRadius(actualDirection, fromInfo, toInfo);
 
         let flipOrigin = 'left';
         let startAngle = 0;
@@ -1641,8 +1678,7 @@ class WMFlipbook {
   }
 
   getTurnDurationMs() {
-    const root = getComputedStyle(this.el);
-    const val = root.getPropertyValue('--flipbook-turn-duration').trim();
+    const val = this.getTurnDurationCss();
     if (!val) return 800;
     if (val.endsWith('ms')) return parseFloat(val);
     if (val.endsWith('s')) return parseFloat(val) * 1000;
@@ -1715,6 +1751,7 @@ class WMFlipbook {
       this.positionFlipperToPage('forward', fromInfo);
       const faces = this.getForwardFlipFaces(fromInfo, nextInfo);
       this.renderFlipper(faces.front, faces.back);
+      this.setFlipperFaceRadius('forward', fromInfo, nextInfo);
       this.setFlipperPose(0, 'left');
     } else {
       if (this.spreadIndex <= 0) return;
@@ -1728,6 +1765,7 @@ class WMFlipbook {
       this.positionFlipperToPage('backward', fromInfo);
       const faces = this.getBackwardFlipFaces(fromInfo, prevInfo);
       this.renderFlipper(faces.front, faces.back);
+      this.setFlipperFaceRadius('backward', fromInfo, prevInfo);
       this.setFlipperPose(0, 'right');
     }
 
@@ -1909,3 +1947,4 @@ class WMFlipbook {
   window.WMFlipbook = WMFlipbook;
   window.wmFlipbookInstances = instances;
 })();
+
