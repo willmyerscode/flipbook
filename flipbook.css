@@ -12,11 +12,13 @@
  * --flipbook-section-padding-block: 3vw;
  * --flipbook-section-button-margin-top: 6vmax;
  * --flipbook-viewport-gap: 1.5rem;
+ * --flipbook-nav-margin-top: 1.5rem;
  * --flipbook-progress-margin-top: 2rem;
  * --flipbook-page-numbers-margin-top: 1rem;
  *
  * Book & Pages:
  * --flipbook-viewport-gap-mobile: 0.25rem;
+ * --flipbook-nav-margin-top-mobile: 1rem;
  * --flipbook-content-padding-mobile: min(2vw, 8px);
  * --flipbook-book-scale-mobile: 0.9; /* book width on mobile (no transform scale) 
  * --flipbook-progress-margin-top-mobile: 1.25rem;
@@ -28,6 +30,7 @@
  * --flipbook-blank-page-bg: color-mix(in srgb, var(--paragraphMediumColor, #888) 12%, transparent);
  *
  * Page Turn:
+ * --flipbook-drag-distance: 1.5; /* page-width multiplier for a full drag turn 
  * --flipbook-fade-duration: 0.4s;
  * --flipbook-fade-easing: ease-in-out;
  * --flipbook-turn-easing: cubic-bezier(0.45, 0.05, 0.25, 1);
@@ -234,11 +237,27 @@ body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .wm-flipbook-content {
 
 [data-wm-plugin="flipbook"] .wm-flipbook-viewport {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+[data-wm-plugin="flipbook"] .wm-flipbook-nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--flipbook-nav-margin-top, 1.5rem);
+  width: 100%;
+  z-index: 7;
+}
+
+[data-wm-plugin="flipbook"][data-wm-navigation-position="sides"] .wm-flipbook-viewport {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: start;
   gap: var(--flipbook-viewport-gap, 1.5rem);
-  width: 100%;
 }
 
 [data-wm-plugin="flipbook"] .wm-flipbook-book-wrap {
@@ -307,6 +326,7 @@ body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .wm-flipbook-content {
    ================================ */
 
 [data-wm-plugin="flipbook"] .wm-flipbook-stage {
+  position: relative;
   width: 100%;
   margin: 0 auto;
   perspective: var(--flipbook-perspective, 2200px);
@@ -619,6 +639,14 @@ body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .wm-flipbook-content {
   box-sizing: border-box;
 }
 
+[data-wm-plugin="flipbook"][data-wm-progress-bar-width="inset"] .wm-flipbook-book-wrap > .wm-flipbook-progress {
+  width: 100%;
+}
+
+[data-wm-plugin="flipbook"][data-wm-progress-bar-width="full"] .wm-flipbook-content > .wm-flipbook-progress {
+  width: 100%;
+}
+
 [data-wm-plugin="flipbook"] .wm-flipbook-progress__track {
   width: 100%;
   max-width: 100%;
@@ -712,11 +740,17 @@ body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .wm-flipbook-content {
     overflow-x: clip;
   }
 
-  [data-wm-plugin="flipbook"] .wm-flipbook-viewport {
+  [data-wm-plugin="flipbook"][data-wm-navigation-position="sides"] .wm-flipbook-viewport {
     grid-template-columns: auto minmax(0, 1fr) auto;
     gap: var(--flipbook-viewport-gap-mobile, 0.35rem);
     min-width: 0;
     overflow-x: clip;
+  }
+
+  [data-wm-plugin="flipbook"]:not([data-wm-navigation-position="sides"]) .wm-flipbook-nav {
+    width: min(100%, calc(100% * var(--flipbook-book-scale-mobile, 0.9)));
+    margin-inline: auto;
+    margin-top: var(--flipbook-nav-margin-top-mobile, 1rem);
   }
 
   [data-wm-plugin="flipbook"] .wm-flipbook-book-wrap {
@@ -727,7 +761,13 @@ body.sqs-edit-mode-active [data-wm-plugin="flipbook"] .wm-flipbook-content {
     overflow: visible;
   }
 
-  [data-wm-plugin="flipbook"] .wm-flipbook-progress {
+  [data-wm-plugin="flipbook"][data-wm-progress-bar-width="inset"] .wm-flipbook-book-wrap > .wm-flipbook-progress {
+    width: min(100%, calc(100% * var(--flipbook-book-scale-mobile, 0.9)));
+    margin-inline: auto;
+    margin-top: var(--flipbook-progress-margin-top-mobile, 1.25rem);
+  }
+
+  [data-wm-plugin="flipbook"][data-wm-progress-bar-width="full"] .wm-flipbook-content > .wm-flipbook-progress {
     margin-top: var(--flipbook-progress-margin-top-mobile, 1.25rem);
   }
 
