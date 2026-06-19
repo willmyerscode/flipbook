@@ -9,9 +9,11 @@ class WMFlipbook {
 
   static defaultSettings = {
     showProgressBar: true,
-    showPageNumbers: true,
+    progressBarWidth: 'inset',
+    showPageNumbers: false,
+    navigationPosition: 'below',
     turnDuration: 0.8,
-    singlePageOnMobile: false,
+    singlePageOnMobile: true,
     singlePageMobileMaxWidth: 767,
     startOnSpread: false,
     sectionDescription: false,
@@ -104,6 +106,22 @@ class WMFlipbook {
     if (this.settings.showPageNumbers) {
       this.el.setAttribute('data-wm-show-page-numbers', '');
     }
+    this.el.setAttribute('data-wm-navigation-position', this.getNavigationPosition());
+    this.el.setAttribute('data-wm-progress-bar-width', this.getProgressBarWidth());
+  }
+
+  getNavigationPosition() {
+    return this.settings.navigationPosition === 'sides' ? 'sides' : 'below';
+  }
+
+  getProgressBarWidth() {
+    return this.settings.progressBarWidth === 'full' ? 'full' : 'inset';
+  }
+
+  getDragDistanceMultiplier() {
+    const val = getComputedStyle(this.el).getPropertyValue('--flipbook-drag-distance').trim();
+    const parsed = parseFloat(val);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1.5;
   }
 
   getTurnDurationCss() {
@@ -892,14 +910,21 @@ class WMFlipbook {
     const dragZone = document.createElement('div');
     dragZone.className = 'wm-flipbook-drag-zone';
     dragZone.setAttribute('aria-hidden', 'true');
-    bookWrap.appendChild(dragZone);
+    this.stageEl.appendChild(dragZone);
     this.dragZoneEl = dragZone;
 
-    viewport.appendChild(this.prevBtn);
-    viewport.appendChild(bookWrap);
-    viewport.appendChild(this.nextBtn);
-
-    this.pluginContent.appendChild(viewport);
+    if (this.getNavigationPosition() === 'sides') {
+      viewport.appendChild(this.prevBtn);
+      viewport.appendChild(bookWrap);
+      viewport.appendChild(this.nextBtn);
+    } else {
+      const nav = document.createElement('div');
+      nav.className = 'wm-flipbook-nav';
+      nav.appendChild(this.prevBtn);
+      nav.appendChild(this.nextBtn);
+      bookWrap.appendChild(nav);
+      viewport.appendChild(bookWrap);
+    }
 
     if (this.settings.showProgressBar) {
       const progress = document.createElement('div');
@@ -913,7 +938,17 @@ class WMFlipbook {
       this.progressFillEl.className = 'wm-flipbook-progress__fill';
       track.appendChild(this.progressFillEl);
       progress.appendChild(track);
-      this.pluginContent.appendChild(progress);
+      if (this.getProgressBarWidth() === 'inset') {
+        bookWrap.appendChild(progress);
+      } else {
+        this.progressBarEl = progress;
+      }
+    }
+
+    this.pluginContent.appendChild(viewport);
+
+    if (this.progressBarEl) {
+      this.pluginContent.appendChild(this.progressBarEl);
     }
 
     if (this.settings.showPageNumbers) {
@@ -1067,7 +1102,14 @@ class WMFlipbook {
 
   restoreSpreadLayoutAfterMeasure(savedCover, savedIndex) {
     if (this.bookEl) this.bookEl.dataset.cover = savedCover;
-    this.goToSpread(savedIndex, { animate: false });
+    const info = this.getSpreadInfo(savedIndex);
+    if (info.isCover) {
+      this.renderPageContent(this.leftPageEl, null, 'left');
+      this.renderPageContent(this.rightPageEl, info.right, 'right');
+    } else {
+      this.renderPageContent(this.leftPageEl, info.left, 'left');
+      this.renderPageContent(this.rightPageEl, info.right, 'right');
+    }
   }
 
   measureTurnLayoutHeight(direction, toInfo, fromInfo) {
@@ -1202,6 +1244,9 @@ class WMFlipbook {
   setFlipperPose(angle, origin) {
     this.flipperEl.dataset.origin = origin;
     this.flipperEl.style.transformOrigin = origin === 'left' ? 'left center' : 'right center';
+    if (this.isDragging) {
+      this.flipperEl.style.transition = 'none';
+    }
     this.flipperEl.style.transform = `rotateY(${angle}deg)`;
   }
 
@@ -1266,7 +1311,8 @@ class WMFlipbook {
           delete this.bookEl.dataset.turn;
           this.clearTurnLayoutHeight();
           this.isAnimating = false;
-          this.updateSpreadDisplay();
+          this.updateSpreadDisplay({ syncProgress: false });
+          this.updateProgress({ animate: false });
           WMFlipbook.emitEvent(':pageTurn', {
             spreadIndex: this.spreadIndex,
             direction,
@@ -1283,7 +1329,7 @@ class WMFlipbook {
       });
   }
 
-  updateSpreadDisplay() {
+  updateSpreadDisplay({ syncProgress = true, animateProgress = false } = {}) {
     this.syncSinglePageAttribute();
     const info = this.getSpreadInfo(this.spreadIndex);
     this.bookEl.dataset.cover = info.isCover ? 'true' : 'false';
@@ -1297,7 +1343,9 @@ class WMFlipbook {
       this.renderPageContent(this.rightPageEl, info.right, 'right');
     }
 
-    this.updateProgress();
+    if (syncProgress) {
+      this.updateProgress({ animate: animateProgress });
+    }
     this.updatePageNumbers();
     this.updateArrowStates();
     this.updateDragZone();
@@ -1349,13 +1397,11 @@ class WMFlipbook {
   }
 
   animateProgressToSpread(targetSpread, { fromSpread, startFraction = 0, direction = 'forward' } = {}) {
+    if (!this.progressFillEl) return;
     const from = fromSpread ?? this.spreadIndex;
     this.updateProgress({ spreadIndex: from, turnFraction: startFraction, direction, animate: false });
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        this.updateProgress({ spreadIndex: targetSpread, turnFraction: 0, direction, animate: true });
-      });
-    });
+    void this.progressFillEl.offsetWidth;
+    this.updateProgress({ spreadIndex: targetSpread, turnFraction: 0, direction, animate: true });
   }
 
   updatePageNumbers() {
@@ -1431,7 +1477,6 @@ class WMFlipbook {
 
       this.spreadIndex = target;
       this.resetFlipperState();
-      this.updateProgress();
       this.updateSpreadDisplay();
 
       if (changed) {
@@ -1656,7 +1701,8 @@ class WMFlipbook {
               delete this.bookEl.dataset.turn;
               this.clearTurnLayoutHeight();
               this.isAnimating = false;
-              this.updateSpreadDisplay();
+              this.updateSpreadDisplay({ syncProgress: false });
+              this.updateProgress({ animate: false });
               WMFlipbook.emitEvent(':pageTurn', {
                 spreadIndex: this.spreadIndex,
                 direction: actualDirection,
@@ -1708,8 +1754,8 @@ class WMFlipbook {
     this.stageEl?.addEventListener('keydown', this.boundHandlers.keydown);
 
     const dragTarget = this.dragZoneEl || this.bookEl;
-    dragTarget.addEventListener('pointerdown', this.boundHandlers.dragStart);
-    window.addEventListener('pointermove', this.boundHandlers.dragMove);
+    dragTarget.addEventListener('pointerdown', this.boundHandlers.dragStart, { passive: false });
+    window.addEventListener('pointermove', this.boundHandlers.dragMove, { passive: false });
     window.addEventListener('pointerup', this.boundHandlers.dragEnd);
     window.addEventListener('pointercancel', this.boundHandlers.dragEnd);
   }
@@ -1727,15 +1773,21 @@ class WMFlipbook {
 
   handleDragStart(e) {
     if (this.isAnimating || this.isSinglePageMode()) return;
+    if (e.button !== 0) return;
     const edge = this.getDragEdgeFromEvent(e);
     if (!edge) return;
+    if (edge === 'left' && this.spreadIndex <= 0) return;
 
     e.preventDefault();
     this.isDragging = true;
     this.dragEdge = edge;
     this.dragStartX = e.clientX;
     this.dragPointerId = e.pointerId;
-    this.dragZoneEl?.setPointerCapture?.(e.pointerId);
+    try {
+      (this.dragZoneEl || this.stageEl)?.setPointerCapture?.(e.pointerId);
+    } catch (_) {
+      // Pointer capture can fail on some browsers; window listeners still handle the drag.
+    }
 
     const fromInfo = this.getSpreadInfo(this.spreadIndex);
     this.bookEl.classList.add('is-turning', 'is-drag-active');
@@ -1754,7 +1806,6 @@ class WMFlipbook {
       this.setFlipperFaceRadius('forward', fromInfo, nextInfo);
       this.setFlipperPose(0, 'left');
     } else {
-      if (this.spreadIndex <= 0) return;
       const prevInfo = this.getSpreadInfo(this.spreadIndex - 1);
       this.bookEl.dataset.turn = 'backward';
       this.flipperEl.dataset.direction = 'backward';
@@ -1769,8 +1820,14 @@ class WMFlipbook {
       this.setFlipperPose(0, 'right');
     }
 
+    this.bookEl.classList.add('is-turning', 'is-drag-active');
+    this.flipperEl.style.transition = 'none';
     this.flipperEl.classList.add('is-dragging');
     this.flipperEl.classList.remove('is-flipping');
+  }
+
+  getDragPageWidth() {
+    return this.getDragPagesRect().width / 2;
   }
 
   getDragPagesRect() {
@@ -1781,22 +1838,29 @@ class WMFlipbook {
   getDragEdgeFromEvent(e) {
     const rect = this.getDragPagesRect();
     const x = e.clientX - rect.left;
-    const threshold = rect.width * 0.12;
     const atStart = this.spreadIndex <= 0;
     const atEnd = this.spreadIndex >= this.spreadCount - 1;
     const edgeMode = this.dragZoneEl?.dataset.edge;
+    const info = this.getSpreadInfo(this.spreadIndex);
 
-    if (!atEnd && edgeMode !== 'left' && x > rect.width - threshold) return 'right';
-    if (!atStart && edgeMode !== 'right' && x < threshold) return 'left';
+    if (info.isCover) {
+      if (!atEnd && edgeMode !== 'left') return 'right';
+      if (!atStart && edgeMode !== 'right') return 'left';
+      return null;
+    }
+
+    const mid = rect.width / 2;
+    if (!atEnd && edgeMode !== 'left' && x >= mid) return 'right';
+    if (!atStart && edgeMode !== 'right' && x < mid) return 'left';
     return null;
   }
 
   handleDragMove(e) {
     if (!this.isDragging || e.pointerId !== this.dragPointerId) return;
 
-    const rect = this.getDragPagesRect();
+    e.preventDefault();
     const delta = e.clientX - this.dragStartX;
-    const maxDrag = rect.width * 0.85;
+    const maxDrag = this.getDragPageWidth() * this.getDragDistanceMultiplier();
     const clamped = Math.max(-maxDrag, Math.min(maxDrag, delta));
     const progress = clamped / maxDrag;
 
@@ -1816,7 +1880,9 @@ class WMFlipbook {
 
     this.isDragging = false;
     this.bookEl.classList.remove('is-drag-active');
-    this.dragZoneEl?.releasePointerCapture?.(this.dragPointerId);
+    try {
+      (this.dragZoneEl || this.stageEl)?.releasePointerCapture?.(this.dragPointerId);
+    } catch (_) {}
 
     const transform = this.flipperEl.style.transform;
     const match = transform.match(/rotateY\((-?\d+\.?\d*)deg\)/);
@@ -1854,7 +1920,8 @@ class WMFlipbook {
         this.bookEl.classList.remove('is-turning', 'is-drag-active');
         delete this.bookEl.dataset.turn;
         this.clearTurnLayoutHeight();
-        this.updateSpreadDisplay();
+        this.updateSpreadDisplay({ syncProgress: false });
+        this.updateProgress({ animate: false });
       };
       this.flipperEl.addEventListener('transitionend', onSnapBack);
       setTimeout(() => onSnapBack(), this.getTurnDurationMs() + 80);
@@ -1893,6 +1960,8 @@ class WMFlipbook {
     this.el.removeAttribute('data-wm-list-layout');
     this.el.removeAttribute('data-wm-show-progress');
     this.el.removeAttribute('data-wm-show-page-numbers');
+    this.el.removeAttribute('data-wm-navigation-position');
+    this.el.removeAttribute('data-wm-progress-bar-width');
     this.el.removeAttribute('data-wm-single-page');
 
     WMFlipbook.emitEvent(':destroy', { el: this.el }, this.el);
