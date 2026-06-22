@@ -2016,4 +2016,3 @@ class WMFlipbook {
   window.WMFlipbook = WMFlipbook;
   window.wmFlipbookInstances = instances;
 })();
-
